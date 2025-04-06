@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
+#include <dirent.h> //
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <direct.h> //mkdir
 #include <fcntl.h>
-#include <unistd.h> //close, read, write
+#include <unistd.h> //close, read, write, rmdir, unlink
 #include <time.h> //for lstat
 
 #define MAX_LENGTH_NAME 1000 //max value for the arrays
@@ -73,7 +73,12 @@ void listFilesInDirectory() {//function to list all the files in the current dir
         char time_str[MAX_LENGTH_NAME];
         
         struct tm *mod_time = localtime(&file_stat.st_mtime); //st_mtime is the recent time at which the file was modified
+        //struct tm --time structure
+
         strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", mod_time);
+        //from the tm structure, defined in <time.h>
+        //size_t strftime(char *str, size_t maxsize, const char *format, const struct tm *tm);
+
 
         printf("File: %-25s    Size: %-10ld    Last Modified: %s\n", entry->d_name, file_stat.st_size, time_str);
 
@@ -100,9 +105,9 @@ void createDirectory(const char *dir_name){
 
     result = _mkdir(dir_name);
 
-    if(result == -1){
+    if(result == -1){ //0 for succes, -1 otherwise and no directory is created
 
-        if(errno = EEXIST){
+        if(errno = EEXIST){//EEXIST -- error code indicating that the directory already exists, errno - stores an error code that represents the cause of failure(0-success, -1 otherwise)
 
             printf("Directory '%s' already exists.\n", dir_name);
         }else{
@@ -118,10 +123,11 @@ void createDirectory(const char *dir_name){
 //function to append a treasure to a binary file inside directory Hunt
 void addTreasureToFile(const char *dir_name, Treasure *t){
 
-    char path[MAX_LENGTH_NAME];
-    snprintf(path, sizeof(path), "%s/treasure.bin", dir_name);
+    char path[MAX_LENGTH_NAME];//path of the binary file 
+    snprintf(path, sizeof(path), "%s/treasure.bin", dir_name);//combines the dir_name with bin file to form the full path
+    //the function formats and stores the full file path in the path array
 
-    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0666);
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0666);//0666 allows: read, write for owner, group, others
 
     if(fd == -1){
 
@@ -129,7 +135,7 @@ void addTreasureToFile(const char *dir_name, Treasure *t){
         exit(1);
     }
 
-    if(write(fd, t, sizeof(Treasure)) != sizeof(Treasure)){
+    if(write(fd, t, sizeof(Treasure)) != sizeof(Treasure)){//the function write() writes the Treasure data to the file starting by the position given by file descriptor
 
         perror("Error while writing treasure\n");
         close(fd);
@@ -153,12 +159,12 @@ void viewTreasureInFile(const char *dir_name){
         exit(1);
     }
 
-    Treasure treasure;
-    ssize_t bytesRead;
+    Treasure treasure;//variable that will hold data from the file
+    ssize_t bytesRead;//store the number of bytes successfully read during each step
     printf("Content of %s:\n", path);
     printf("=====================================\n");
 
-    while((bytesRead = read(fd, &treasure, sizeof(Treasure))) > 0){
+    while((bytesRead = read(fd, &treasure, sizeof(Treasure))) > 0){//reads sizeof(Treasure) bytes from the file into treasure
 
         if(bytesRead != sizeof(Treasure)){
 
@@ -199,14 +205,14 @@ void remove_hunt(const char *dir_name){
 
     while((entry = readdir(dir)) != NULL){
 
-        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){
+        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){//just to skip . and ..
 
             continue;
         }
 
-        snprintf(path, sizeof(path), "%s/%s\n", dir_name, entry->d_name);
+        snprintf(path, sizeof(path), "%s/%s\n", dir_name, entry->d_name);//creates full path of the current entry
 
-        if(unlink(path) == -1){
+        if(unlink(path) == -1){//delete file from a given path
 
             perror("unlink\n");
             closedir(dir);
@@ -219,7 +225,7 @@ void remove_hunt(const char *dir_name){
 
     closedir(dir);
 
-    if(rmdir(dir_name) == -1){
+    if(rmdir(dir_name) == -1){//delete directory
 
         perror("rmdir\n");
         exit(1);
@@ -303,3 +309,45 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+
+// struct dirent {
+//     ino_t          d_ino;       /* inode number */
+//     off_t          d_off;       /* offset to the next dirent */
+//     unsigned short d_reclen;    /* length of this record */
+//     unsigned char  d_type;      /* type of file; not supported
+//                                    by all file system types */
+//     char           d_name[256]; /* filename */
+// };
+
+// int lstat(const char *restrict pathname,
+//     struct stat *restrict statbuf);
+
+// struct stat {
+//     dev_t     st_dev;     // ID of device containing file
+//     ino_t     st_ino;     // Inode number
+//     mode_t    st_mode;    // File type and mode (permissions)
+//     nlink_t   st_nlink;   // Number of hard links
+//     uid_t     st_uid;     // User ID of owner
+//     gid_t     st_gid;     // Group ID of owner
+//     dev_t     st_rdev;    // Device ID (if special file)
+//     off_t     st_size;    // Total size, in bytes
+//     blksize_t st_blksize; // Block size for filesystem I/O
+//     blkcnt_t  st_blocks;  // Number of 512B blocks allocated
+
+//     struct timespec st_atim;  // Time of last access
+//     struct timespec st_mtim;  // Time of last modification
+//     struct timespec st_ctim;  // Time of last status change
+// };
+
+// struct tm {
+//     int tm_sec;    // Seconds (0-59)
+//     int tm_min;    // Minutes (0-59)
+//     int tm_hour;   // Hour (0-23)
+//     int tm_mday;   // Day of month (1-31)
+//     int tm_mon;    // Month (0-11)
+//     int tm_year;   // Year since 1900
+//     int tm_wday;   // Day of week (0-6, Sunday = 0)
+//     int tm_yday;   // Day of year (0-365)
+//     int tm_isdst;  // Daylight saving time flag
+// };
+
