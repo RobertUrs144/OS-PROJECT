@@ -5,10 +5,10 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <direct.h>
+#include <direct.h> //mkdir
 #include <fcntl.h>
-#include <unistd.h>
-#include <time.h>
+#include <unistd.h> //close, read, write
+#include <time.h> //for lstat
 
 #define MAX_LENGTH_NAME 1000 //max value for the arrays
 
@@ -93,6 +93,7 @@ remove_treasure <hunt_id> <id> //not sure how to do it
 remove_hunt <hunt_id> //done
 */
 
+//function to create a directory, in this case Hunt
 void createDirectory(const char *dir_name){
 
     int result;
@@ -114,6 +115,7 @@ void createDirectory(const char *dir_name){
     }
 }
 
+//function to append a treasure to a binary file inside directory Hunt
 void addTreasureToFile(const char *dir_name, Treasure *t){
 
     char path[MAX_LENGTH_NAME];
@@ -138,6 +140,7 @@ void addTreasureToFile(const char *dir_name, Treasure *t){
     close(fd);
 }
 
+//function to display all treasures from a specific treasure.bin file
 void viewTreasureInFile(const char *dir_name){
 
     char path[MAX_LENGTH_NAME];
@@ -180,6 +183,7 @@ void viewTreasureInFile(const char *dir_name){
     close(fd);
 }
 
+//function to remove the Hunt directory along with the files containing in that directory
 void remove_hunt(const char *dir_name){
 
     DIR *dir;
@@ -230,6 +234,7 @@ void remove_hunt(const char *dir_name){
 
 // }
 
+//main function in which we handle the commands in terminal
 int main(int argc, char **argv) {
 
     if (argc < 2) {
