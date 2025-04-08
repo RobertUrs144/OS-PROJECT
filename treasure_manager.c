@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h> //
+#include <dirent.h>
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <direct.h> //mkdir
 #include <fcntl.h>
-#include <unistd.h> //close, read, write, rmdir, unlink
+#include <unistd.h> //close, read, write, rmdir, unlink, symlink
 #include <time.h> //for lstat
+#include <windows.h>
 
 #define MAX_LENGTH_NAME 1000 //max value for the arrays
 
@@ -36,6 +37,60 @@ Treasure *addHunt_ID(int treasureID) {//function to add the treasure id
     }
     temp->treasureID = treasureID;
     return temp;
+}
+
+void create_symlink(const char *dir_name){//function to create a sym link for the logged_hunt file
+
+    char log_file[MAX_LENGTH_NAME];
+    snprintf(log_file, sizeof(log_file), "%s/logged_hunt", dir_name);
+
+    char symlink_name[MAX_LENGTH_NAME];
+    snprintf(symlink_name, sizeof(symlink_name), "logged_hunt-%s", dir_name);
+
+    if(CreateSymbolicLink(symlink_name, log_file, 0) == 0){//0-failure
+
+        perror("Error while creating symlink\n");
+    }else{
+
+        printf("Symbolic link created %s --- %s\n", symlink_name, log_file);
+    }
+}
+
+void log_op(const char *dir_name, const char *op){//functio to log operations
+
+    time_t raw_time;
+    struct tm *timeInfo;
+    char time_str[MAX_LENGTH_NAME];
+
+    //get current time and format it
+    time(&raw_time);
+    timeInfo = localtime(&raw_time);
+    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", timeInfo);
+
+    char entry[MAX_LENGTH_NAME];
+    snprintf(entry, sizeof(entry), "[%s] %s\n", time_str, op);//format log entry with the operaion and timestamp
+
+    char path[MAX_LENGTH_NAME];
+    snprintf(path, sizeof(path), "%s/logged_hunt.txt", dir_name);
+
+    //open the log file and append the new log entry
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0666);
+    if(fd == -1){
+
+        perror("Error while opening the log file\n");
+        exit(1);
+    }
+
+    //write the log entry to the file
+    ssize_t bytesWritten = write(fd, entry, strlen(entry));
+    if(bytesWritten == -1){
+
+        perror("Error while writing to log file\n");
+        close(fd);
+        exit(1);
+    }
+
+    close(fd);
 }
 
 void listFilesInDirectory() {//function to list all the files in the current directory, with all the data about files
@@ -107,7 +162,7 @@ void createDirectory(const char *dir_name){
 
     if(result == -1){ //0 for succes, -1 otherwise and no directory is created
 
-        if(errno = EEXIST){//EEXIST -- error code indicating that the directory already exists, errno - stores an error code that represents the cause of failure(0-success, -1 otherwise)
+        if(errno == EEXIST){//EEXIST -- error code indicating that the directory already exists, errno - stores an error code that represents the cause of failure(0-success, -1 otherwise)
 
             printf("Directory '%s' already exists.\n", dir_name);
         }else{
@@ -144,6 +199,10 @@ void addTreasureToFile(const char *dir_name, Treasure *t){
 
     printf("Treasure : %s\n", path);
     close(fd);
+
+    char message[MAX_LENGTH_NAME];
+    snprintf(message, sizeof(message), "ADD treasure%d by user=%s at %4.Lf, %4.Lf, %4.Lf, value=%d", t->treasureID, t->user_name, t->gps.latitude, t->gps.longitude, t->value);
+    log_op(dir_name, message);
 }
 
 //function to display all treasures from a specific treasure.bin file
@@ -187,6 +246,10 @@ void viewTreasureInFile(const char *dir_name){
     }
 
     close(fd);
+
+    char message[MAX_LENGTH_NAME];
+    snprintf(message, sizeof(message), "VIEW treasure%d", treasure.treasureID);
+    log_op(dir_name, message);
 }
 
 //function to remove the Hunt directory along with the files containing in that directory
@@ -210,17 +273,30 @@ void remove_hunt(const char *dir_name){
             continue;
         }
 
-        snprintf(path, sizeof(path), "%s/%s\n", dir_name, entry->d_name);//creates full path of the current entry
+        snprintf(path, sizeof(path), "%s/%s", dir_name, entry->d_name);//creates full path of the current entry
+        
+        struct stat path_stat;
 
-        if(unlink(path) == -1){//delete file from a given path
+        if(stat(path, &path_stat) == -1){
 
-            perror("unlink\n");
-            closedir(dir);
-            exit(1);
+            perror("stat failed\n");
+            continue;
+        }
+
+        if(S_ISDIR(path_stat.st_mode)){//recursively delete subdirectory
+
+            remove_hunt(path);
         }else{
 
-            printf("Remove: %s\n", path);
+            if(unlink(path) != 0){
+
+                perror("Failed to delete file\n");
+            }
         }
+
+        char log_message[MAX_LENGTH_NAME];
+        snprintf(log_message, sizeof(log_message), "REMOVE_HUNT %s", dir_name);
+        log_op(dir_name, log_message);
     }
 
     closedir(dir);
@@ -235,10 +311,24 @@ void remove_hunt(const char *dir_name){
     }
 }
 
-// void remove_treasure(const char *dir_name, int treasureID){
+void remove_treasure(const char *dir_name){
 
+    char path[MAX_LENGTH_NAME];
 
-// }
+    snprintf(path, sizeof(path), "%s/treasure.bin", dir_name);
+
+    if(unlink(path) == -1){
+
+        perror("Failed to delte treasure.bin file\n");
+        exit(1);
+    }
+
+    printf("treasure.bin file removed successfully from Hunt directory '%s'\n", dir_name);
+
+    char log_message[MAX_LENGTH_NAME];
+    snprintf(log_message, sizeof(log_message), "REMOVE treasure1");
+    log_op(dir_name, log_message);
+}
 
 //main function in which we handle the commands in terminal
 int main(int argc, char **argv) {
@@ -268,6 +358,7 @@ int main(int argc, char **argv) {
 
         addTreasureToFile(dir_name, treasure);
         free(treasure);
+        create_symlink(dir_name);
 
     } else if (strcmp(argv[1], "--remove_hunt") == 0) {
 
@@ -281,9 +372,18 @@ int main(int argc, char **argv) {
         const char *dir_name = argv[2];
         remove_hunt(dir_name);
 
-    }else if(strcmp(argv[1], "remove_treasure") == 0){
+    }else if(strcmp(argv[1], "--remove_treasure") == 0){
 
         printf("Remove treasure\n");
+
+        if(argc < 3){
+
+            printf("Error! Provide a hunt directory for remove_treasure\n");
+            exit(1);
+        }
+
+        const char *dir_name = argv[2];
+        remove_treasure(dir_name);
 
     } else if (strcmp(argv[1], "--list") == 0) {
 
@@ -304,7 +404,7 @@ int main(int argc, char **argv) {
 
     } else {
 
-        printf("Please use a different argument. For example: --add, --list, --view, --remove\n");
+        printf("Please use a different argument. For example: --add, --list, --view, --remove_hunt, --remove_treasure\n");
     }
 
     return 0;
@@ -350,4 +450,3 @@ int main(int argc, char **argv) {
 //     int tm_yday;   // Day of year (0-365)
 //     int tm_isdst;  // Daylight saving time flag
 // };
-
