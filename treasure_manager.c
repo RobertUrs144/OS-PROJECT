@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <direct.h> //mkdir
+#include <direct.h> //mkdir, functions that works with files and directories
 #include <fcntl.h>
 #include <unistd.h> //close, read, write, rmdir, unlink, symlink
 #include <time.h> //for lstat
