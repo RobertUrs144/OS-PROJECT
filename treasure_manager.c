@@ -5,87 +5,72 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <direct.h> //mkdir, functions that works with files and directories
 #include <fcntl.h>
-#include <unistd.h> //close, read, write, rmdir, unlink, symlink
-#include <time.h> //for lstat
-#include <windows.h>
+#include <unistd.h>   // close, read, write, rmdir, unlink, symlink
+#include <time.h>
 
-#define MAX_LENGTH_NAME 1000 //max value for the arrays
+#define MAX_LENGTH_NAME 1000
 
-typedef struct{ //struct for gps coordinates
-
+typedef struct {
     long double latitude;
     long double longitude;
-}GPS;
+} GPS;
 
-typedef struct { //struct for the treasure data
+typedef struct {
     int treasureID;
     char user_name[MAX_LENGTH_NAME];
     char clue[100];
     GPS gps;
     int value;
-}Treasure;
+} Treasure;
 
-
-Treasure *addHunt_ID(int treasureID) {//function to add the treasure id
-
+Treasure *addHunt_ID(int treasureID) {
     Treasure *temp = (Treasure *)malloc(sizeof(Treasure));
     if (!temp) {
-        printf("Memory allocation failed\n");
+        perror("Memory allocation failed");
         exit(1);
     }
     temp->treasureID = treasureID;
     return temp;
 }
 
-void create_symlink(const char *dir_name){//function to create a sym link for the logged_hunt file
-
+void create_symlink(const char *dir_name) {
     char log_file[MAX_LENGTH_NAME];
-    snprintf(log_file, sizeof(log_file), "%s/logged_hunt", dir_name);
+    snprintf(log_file, sizeof(log_file), "%s/logged_hunt.txt", dir_name);
 
     char symlink_name[MAX_LENGTH_NAME];
     snprintf(symlink_name, sizeof(symlink_name), "logged_hunt-%s", dir_name);
 
-    if(CreateSymbolicLink(symlink_name, log_file, 0) == 0){//0-failure
-
-        perror("Error while creating symlink\n");
-    }else{
-
-        printf("Symbolic link created %s --- %s\n", symlink_name, log_file);
+    if (symlink(log_file, symlink_name) == -1) {
+        perror("Error while creating symlink");
+    } else {
+        printf("Symbolic link created: %s -> %s\n", symlink_name, log_file);
     }
 }
 
-void log_op(const char *dir_name, const char *op){//functio to log operations
-
+void log_op(const char *dir_name, const char *op) {
     time_t raw_time;
     struct tm *timeInfo;
     char time_str[MAX_LENGTH_NAME];
 
-    //get current time and format it
     time(&raw_time);
     timeInfo = localtime(&raw_time);
     strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", timeInfo);
 
     char entry[MAX_LENGTH_NAME];
-    snprintf(entry, sizeof(entry), "[%s] %s\n", time_str, op);//format log entry with the operaion and timestamp
+    snprintf(entry, sizeof(entry), "[%s] %s\n", time_str, op);
 
     char path[MAX_LENGTH_NAME];
     snprintf(path, sizeof(path), "%s/logged_hunt.txt", dir_name);
 
-    //open the log file and append the new log entry
     int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0666);
-    if(fd == -1){
-
-        perror("Error while opening the log file\n");
+    if (fd == -1) {
+        perror("Error while opening the log file");
         exit(1);
     }
 
-    //write the log entry to the file
-    ssize_t bytesWritten = write(fd, entry, strlen(entry));
-    if(bytesWritten == -1){
-
-        perror("Error while writing to log file\n");
+    if (write(fd, entry, strlen(entry)) == -1) {
+        perror("Error while writing to log file");
         close(fd);
         exit(1);
     }
@@ -93,15 +78,14 @@ void log_op(const char *dir_name, const char *op){//functio to log operations
     close(fd);
 }
 
-void listFilesInDirectory() {//function to list all the files in the current directory, with all the data about files
-   
+void listFilesInDirectory() {
     DIR *dir;
     struct dirent *entry;
     struct stat file_stat;
     long total_size = 0;
-    
+
     dir = opendir(".");
-    if (dir == NULL) {//if the directory is empty, then show a message
+    if (!dir) {
         perror("opendir");
         exit(1);
     }
@@ -110,124 +94,88 @@ void listFilesInDirectory() {//function to list all the files in the current dir
     printf("=========================================================================================\n");
 
     while ((entry = readdir(dir)) != NULL) {
-        
-        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
 
-            continue; //skips . and ..
-        }
-
-        if(stat(entry->d_name, &file_stat) == -1){
-
-            perror("stat\n");
+        if (stat(entry->d_name, &file_stat) == -1) {
+            perror("stat");
             closedir(dir);
             exit(1);
         }
 
-        total_size = total_size + file_stat.st_size; //.st_size is the size of file in bytes
+        total_size += file_stat.st_size;
 
         char time_str[MAX_LENGTH_NAME];
-        
-        struct tm *mod_time = localtime(&file_stat.st_mtime); //st_mtime is the recent time at which the file was modified
-        //struct tm --time structure
-
+        struct tm *mod_time = localtime(&file_stat.st_mtime);
         strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", mod_time);
-        //from the tm structure, defined in <time.h>
-        //size_t strftime(char *str, size_t maxsize, const char *format, const struct tm *tm);
 
-
-        printf("File: %-25s    Size: %-10ld    Last Modified: %s\n", entry->d_name, file_stat.st_size, time_str);
-
+        printf("File: %-25s    Size: %-10ld    Last Modified: %s\n",
+               entry->d_name, file_stat.st_size, time_str);
     }
 
     printf("=========================================================================================\n");
     printf("Total size of all files: %ld bytes\n", total_size);
-
     closedir(dir);
 }
 
-/*
-add <hunt_id> //done
-list <hunt_id> //done
-view <hunt_id> <id> //done
-remove_treasure <hunt_id> <id> //not sure how to do it
-remove_hunt <hunt_id> //done
-*/
+void createDirectory(const char *dir_name) {
+    int result = mkdir(dir_name, 0777); // Linux version with permissions
 
-//function to create a directory, in this case Hunt
-void createDirectory(const char *dir_name){
-
-    int result;
-
-    result = _mkdir(dir_name);
-
-    if(result == -1){ //0 for succes, -1 otherwise and no directory is created
-
-        if(errno == EEXIST){//EEXIST -- error code indicating that the directory already exists, errno - stores an error code that represents the cause of failure(0-success, -1 otherwise)
-
+    if (result == -1) {
+        if (errno == EEXIST) {
             printf("Directory '%s' already exists.\n", dir_name);
-        }else{
-
+        } else {
             perror("mkdir failed");
         }
-    }else{
-
+    } else {
         printf("Directory '%s' created successfully.\n", dir_name);
     }
 }
 
-//function to append a treasure to a binary file inside directory Hunt
-void addTreasureToFile(const char *dir_name, Treasure *t){
+void addTreasureToFile(const char *dir_name, Treasure *t) {
+    char path[MAX_LENGTH_NAME];
+    snprintf(path, sizeof(path), "%s/treasure.bin", dir_name);
 
-    char path[MAX_LENGTH_NAME];//path of the binary file 
-    snprintf(path, sizeof(path), "%s/treasure.bin", dir_name);//combines the dir_name with bin file to form the full path
-    //the function formats and stores the full file path in the path array
-
-    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0666);//0666 allows: read, write for owner, group, others
-
-    if(fd == -1){
-
-        perror("Error while opening the treasure file\n");
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0666);
+    if (fd == -1) {
+        perror("Error while opening the treasure file");
         exit(1);
     }
 
-    if(write(fd, t, sizeof(Treasure)) != sizeof(Treasure)){//the function write() writes the Treasure data to the file starting by the position given by file descriptor
-
-        perror("Error while writing treasure\n");
+    if (write(fd, t, sizeof(Treasure)) != sizeof(Treasure)) {
+        perror("Error while writing treasure");
         close(fd);
         exit(1);
     }
 
-    printf("Treasure : %s\n", path);
+    printf("Treasure added to file: %s\n", path);
     close(fd);
 
     char message[MAX_LENGTH_NAME];
-    snprintf(message, sizeof(message), "ADD treasure%d by user=%s at %4.Lf, %4.Lf, %4.Lf, value=%d", t->treasureID, t->user_name, t->gps.latitude, t->gps.longitude, t->value);
+    snprintf(message, sizeof(message), "ADD treasure%d by user=%s at %.4Lf, %.4Lf, value=%d",
+             t->treasureID, t->user_name, t->gps.latitude, t->gps.longitude, t->value);
     log_op(dir_name, message);
 }
 
-//function to display all treasures from a specific treasure.bin file
-void viewTreasureInFile(const char *dir_name){
-
+void viewTreasureInFile(const char *dir_name) {
     char path[MAX_LENGTH_NAME];
     snprintf(path, sizeof(path), "%s/treasure.bin", dir_name);
 
     int fd = open(path, O_RDONLY);
-    if(fd == -1){
-
-        perror("Error while opening the treasure file\n");
+    if (fd == -1) {
+        perror("Error while opening the treasure file");
         exit(1);
     }
 
-    Treasure treasure;//variable that will hold data from the file
-    ssize_t bytesRead;//store the number of bytes successfully read during each step
+    Treasure treasure;
+    ssize_t bytesRead;
+
     printf("Content of %s:\n", path);
     printf("=====================================\n");
 
-    while((bytesRead = read(fd, &treasure, sizeof(Treasure))) > 0){//reads sizeof(Treasure) bytes from the file into treasure
-
-        if(bytesRead != sizeof(Treasure)){
-
-            printf("Error: Incomplete data read in treasure\n");
+    while ((bytesRead = read(fd, &treasure, sizeof(Treasure))) > 0) {
+        if (bytesRead != sizeof(Treasure)) {
+            printf("Error: Incomplete data read\n");
             exit(1);
         }
 
@@ -240,9 +188,8 @@ void viewTreasureInFile(const char *dir_name){
         printf("=====================================\n");
     }
 
-    if(bytesRead == -1){
-
-        perror("Error while opening the treasure file\n");
+    if (bytesRead == -1) {
+        perror("Error while reading treasure file");
     }
 
     close(fd);
@@ -252,100 +199,79 @@ void viewTreasureInFile(const char *dir_name){
     log_op(dir_name, message);
 }
 
-//function to remove the Hunt directory along with the files containing in that directory
-void remove_hunt(const char *dir_name){
-
-    DIR *dir;
+void remove_hunt(const char *dir_name) {
+    DIR *dir = opendir(dir_name);
     struct dirent *entry;
     char path[MAX_LENGTH_NAME];
 
-    dir = opendir(dir_name);
-    if(dir == NULL){
-
-        perror("opendir\n");
+    if (!dir) {
+        perror("opendir");
         exit(1);
     }
 
-    while((entry = readdir(dir)) != NULL){
-
-        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){//just to skip . and ..
-
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;
-        }
 
-        snprintf(path, sizeof(path), "%s/%s", dir_name, entry->d_name);//creates full path of the current entry
-        
+        snprintf(path, sizeof(path), "%s/%s", dir_name, entry->d_name);
         struct stat path_stat;
 
-        if(stat(path, &path_stat) == -1){
-
-            perror("stat failed\n");
+        if (stat(path, &path_stat) == -1) {
+            perror("stat failed");
             continue;
         }
 
-        if(S_ISDIR(path_stat.st_mode)){//recursively delete subdirectory
-
-            remove_hunt(path);
-        }else{
-
-            if(unlink(path) != 0){
-
-                perror("Failed to delete file\n");
+        if (S_ISDIR(path_stat.st_mode)) {
+            remove_hunt(path); // Recursive removal
+        } else {
+            if (unlink(path) != 0) {
+                perror("Failed to delete file");
             }
         }
-
-        char log_message[MAX_LENGTH_NAME];
-        snprintf(log_message, sizeof(log_message), "REMOVE_HUNT %s", dir_name);
-        log_op(dir_name, log_message);
     }
 
     closedir(dir);
 
-    if(rmdir(dir_name) == -1){//delete directory
-
-        perror("rmdir\n");
+    if (rmdir(dir_name) == -1) {
+        perror("rmdir");
         exit(1);
-    }else{
-
+    } else {
         printf("Hunt directory '%s' removed successfully\n", dir_name);
     }
-}
-
-void remove_treasure(const char *dir_name){
-
-    char path[MAX_LENGTH_NAME];
-
-    snprintf(path, sizeof(path), "%s/treasure.bin", dir_name);
-
-    if(unlink(path) == -1){
-
-        perror("Failed to delte treasure.bin file\n");
-        exit(1);
-    }
-
-    printf("treasure.bin file removed successfully from Hunt directory '%s'\n", dir_name);
 
     char log_message[MAX_LENGTH_NAME];
-    snprintf(log_message, sizeof(log_message), "REMOVE treasure1");
+    snprintf(log_message, sizeof(log_message), "REMOVE_HUNT %s", dir_name);
     log_op(dir_name, log_message);
 }
 
-//main function in which we handle the commands in terminal
-int main(int argc, char **argv) {
+void remove_treasure(const char *dir_name) {
+    char path[MAX_LENGTH_NAME];
+    snprintf(path, sizeof(path), "%s/treasure.bin", dir_name);
 
-    if (argc < 2) {
-        printf("Error with the arguments\n");
+    if (unlink(path) == -1) {
+        perror("Failed to delete treasure.bin file");
         exit(1);
     }
 
-    if (strcmp(argv[1], "--add") == 0) {
-        if(argc < 3){
+    printf("treasure.bin removed from '%s'\n", dir_name);
 
-            printf("Error! Provide a directory name for --add\n");
-            exit(1);
+    char log_message[MAX_LENGTH_NAME];
+    snprintf(log_message, sizeof(log_message), "REMOVE treasure");
+    log_op(dir_name, log_message);
+}
+
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        printf("Error: Not enough arguments\n");
+        return 1;
+    }
+
+    if (strcmp(argv[1], "--add") == 0) {
+        if (argc < 3) {
+            printf("Error: Provide a directory name for --add\n");
+            return 1;
         }
-        
-        printf("Add\n");
+
         const char *dir_name = argv[2];
         createDirectory(dir_name);
 
@@ -358,95 +284,39 @@ int main(int argc, char **argv) {
 
         addTreasureToFile(dir_name, treasure);
         free(treasure);
+
         create_symlink(dir_name);
 
     } else if (strcmp(argv[1], "--remove_hunt") == 0) {
-
-        if(argc < 3){
-
-            printf("Error! Provide a hunt directory name for --remove_hunt\n");
-            exit(1);
+        if (argc < 3) {
+            printf("Error: Provide a directory name for --remove_hunt\n");
+            return 1;
         }
 
-        printf("Remove Hunt\n");
-        const char *dir_name = argv[2];
-        remove_hunt(dir_name);
+        remove_hunt(argv[2]);
 
-    }else if(strcmp(argv[1], "--remove_treasure") == 0){
-
-        printf("Remove treasure\n");
-
-        if(argc < 3){
-
-            printf("Error! Provide a hunt directory for remove_treasure\n");
-            exit(1);
+    } else if (strcmp(argv[1], "--remove_treasure") == 0) {
+        if (argc < 3) {
+            printf("Error: Provide a directory name for --remove_treasure\n");
+            return 1;
         }
 
-        const char *dir_name = argv[2];
-        remove_treasure(dir_name);
+        remove_treasure(argv[2]);
 
     } else if (strcmp(argv[1], "--list") == 0) {
-
-        printf("Listing files in current directory:\n");
         listFilesInDirectory();
 
     } else if (strcmp(argv[1], "--view") == 0) {
-
-        if(argc < 3){
-
-            printf("Error! Provide a directory name for --view\n");
-            exit(1);
+        if (argc < 3) {
+            printf("Error: Provide a directory name for --view\n");
+            return 1;
         }
 
-        printf("View\n");
-        const char *dir_name = argv[2];
-        viewTreasureInFile(dir_name);
+        viewTreasureInFile(argv[2]);
 
     } else {
-
-        printf("Please use a different argument. For example: --add, --list, --view, --remove_hunt, --remove_treasure\n");
+        printf("Unknown command. Use: --add, --remove_hunt, --remove_treasure, --list, --view\n");
     }
 
     return 0;
 }
-
-// struct dirent {
-//     ino_t          d_ino;       /* inode number */
-//     off_t          d_off;       /* offset to the next dirent */
-//     unsigned short d_reclen;    /* length of this record */
-//     unsigned char  d_type;      /* type of file; not supported
-//                                    by all file system types */
-//     char           d_name[256]; /* filename */
-// };
-
-// int lstat(const char *restrict pathname,
-//     struct stat *restrict statbuf);
-
-// struct stat {
-//     dev_t     st_dev;     // ID of device containing file
-//     ino_t     st_ino;     // Inode number
-//     mode_t    st_mode;    // File type and mode (permissions)
-//     nlink_t   st_nlink;   // Number of hard links
-//     uid_t     st_uid;     // User ID of owner
-//     gid_t     st_gid;     // Group ID of owner
-//     dev_t     st_rdev;    // Device ID (if special file)
-//     off_t     st_size;    // Total size, in bytes
-//     blksize_t st_blksize; // Block size for filesystem I/O
-//     blkcnt_t  st_blocks;  // Number of 512B blocks allocated
-
-//     struct timespec st_atim;  // Time of last access
-//     struct timespec st_mtim;  // Time of last modification
-//     struct timespec st_ctim;  // Time of last status change
-// };
-
-// struct tm {
-//     int tm_sec;    // Seconds (0-59)
-//     int tm_min;    // Minutes (0-59)
-//     int tm_hour;   // Hour (0-23)
-//     int tm_mday;   // Day of month (1-31)
-//     int tm_mon;    // Month (0-11)
-//     int tm_year;   // Year since 1900
-//     int tm_wday;   // Day of week (0-6, Sunday = 0)
-//     int tm_yday;   // Day of year (0-365)
-//     int tm_isdst;  // Daylight saving time flag
-// };
