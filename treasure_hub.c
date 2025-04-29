@@ -8,27 +8,27 @@
 pid_t monitor_pid = -1;
 int monitor_running = 0;
 
-void handle_sigchld(int sig){
+void handle_sigchld(int sig){ //function to handle SIGCHLD, which occurs when the child process ends
 
     int status;
     waitpid(monitor_pid, &status, 0);
-    monitor_running = 0;
+    monitor_running = 0;//update the flag to show the monitor is no longer running
     printf("Monitor terminated with status %d\n", status);
 }
 
-void handle_usr1(int sig){
+void handle_usr1(int sig){//function to handle SIGUSR1 in the monitor process
 
     printf("[Monitor] Received signal: SIGUSR1\n");
 }
 
-void handle_term(int sig){
+void handle_term(int sig){//function to hande SIGTERM in the monitor for shutdown
 
     printf("[Monitor] Received SIGTERM, shutting down....\n");
-    usleep(2000000);
+    usleep(2000000); //simulate 2 seconds for the shutting down the monitor
     exit(0);
 }
 
-void start_monitor(){
+void start_monitor(){//start the monitor process
 
     if(monitor_running){
 
@@ -36,7 +36,7 @@ void start_monitor(){
         return;
     }
 
-    monitor_pid = fork();
+    monitor_pid = fork();//create child process
 
     if(monitor_pid < 0){
 
@@ -70,7 +70,7 @@ void start_monitor(){
     printf("Monitor started with PID %d\n", monitor_pid);
 }
 
-void stop_monitor(){
+void stop_monitor(){//sends SIGTERM to the monitor to stop it
 
     if(!monitor_running){
 
@@ -78,7 +78,7 @@ void stop_monitor(){
         return;
     }
 
-    kill(monitor_pid, SIGTERM);
+    kill(monitor_pid, SIGTERM);//tell the monitor to shut down
     printf("Stop signal sent to monitor (PID %d)\n", monitor_pid);
 }
 
@@ -91,6 +91,7 @@ int main(){
     sa_chld.sa_flags = SA_RESTART;
     sigaction(SIGCHLD, &sa_chld, NULL);
 
+    //testing
     start_monitor();
 
     sleep(1);
