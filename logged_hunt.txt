@@ -1,0 +1,18 @@
+[2025-05-07 14:13:07] Monitor process started
+[2025-05-07 14:13:12] Received command: list_hunts
+[2025-05-07 14:21:55] Monitor process started
+[2025-05-07 14:22:00] Received command: list_hunts
+[2025-05-07 14:22:44] SIGTERM received. Monitor shutting down in 2 seconds...
+[2025-05-07 14:22:46] Monitor terminated.
+[2025-05-07 14:40:38] Monitor process started
+[2025-05-07 14:40:42] Received command: list_hunts
+[2025-05-07 14:40:58] SIGTERM received. Monitor shutting down in 2 seconds...
+[2025-05-07 14:41:00] Monitor terminated.
+[2025-05-07 14:42:24] Monitor process started
+[2025-05-07 14:42:34] Monitor process started
+[2025-05-07 14:42:55] SIGTERM received. Monitor shutting down in 2 seconds...
+[2025-05-07 14:42:57] Monitor terminated.
+[2025-05-07 22:24:38] Monitor process started
+[2025-05-07 22:24:43] Received command: list_hunts
+[2025-05-07 22:25:01] SIGTERM received. Monitor shutting down in 2 seconds...
+[2025-05-07 22:25:03] Monitor terminated.

@@ -1,106 +1,126 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <sys/wait.h>
+#include <signal.h>
+#include <errno.h>
+
+#define CMD_FILE "monitor_cmd.txt"
+#define MAX_INPUT 1024
 
 pid_t monitor_pid = -1;
-int monitor_running = 0;
 
-void handle_sigchld(int sig){ //function to handle SIGCHLD, which occurs when the child process ends
-
-    int status;
-    waitpid(monitor_pid, &status, 0);
-    monitor_running = 0;//update the flag to show the monitor is no longer running
-    printf("Monitor terminated with status %d\n", status);
+void write_command(const char *command) {
+    FILE *fp = fopen(CMD_FILE, "w");
+    if (!fp) {
+        perror("Failed to write command");
+        return;
+    }
+    fprintf(fp, "%s\n", command);
+    fclose(fp);
 }
 
-void handle_usr1(int sig){//function to handle SIGUSR1 in the monitor process
-
-    printf("[Monitor] Received signal: SIGUSR1\n");
+void send_sigusr1() {
+    if (monitor_pid > 0) {
+        kill(monitor_pid, SIGUSR1);
+    } else {
+        printf("Monitor not running.\n");
+    }
 }
 
-void handle_term(int sig){//function to hande SIGTERM in the monitor for shutdown
+void start_monitor() {
+    if (monitor_pid > 0) {
+        printf("Monitor already running with PID %d\n", monitor_pid);
+        return;
+    }
 
-    printf("[Monitor] Received SIGTERM, shutting down....\n");
-    usleep(2000000); //simulate 2 seconds for the shutting down the monitor
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("Failed to fork monitor");
+        return;
+    }
+
+    if (pid == 0) {
+        // Child process runs the monitor
+        execl("./monitor", "monitor", NULL);
+        perror("Failed to exec monitor");
+        exit(1);
+    } else {
+        monitor_pid = pid;
+        printf("Monitor started with PID %d\n", monitor_pid);
+        sleep(1); // Let the monitor initialize
+    }
+}
+
+void stop_monitor() {
+    if (monitor_pid <= 0) {
+        printf("Monitor is not running.\n");
+        return;
+    }
+
+    kill(monitor_pid, SIGTERM);
+    waitpid(monitor_pid, NULL, 0); // Wait for monitor to finish
+    printf("Monitor with PID %d stopped.\n", monitor_pid);
+    monitor_pid = -1;
+}
+
+void cleanup_and_exit() {
+    if (monitor_pid > 0) {
+        kill(monitor_pid, SIGTERM);
+        waitpid(monitor_pid, NULL, 0);
+        printf("Monitor terminated on exit.\n");
+    }
+    printf("Exiting treasure_hub.\n");
     exit(0);
 }
 
-void start_monitor(){//start the monitor process
+int main() {
+    char input[MAX_INPUT];
 
-    if(monitor_running){
+    printf("Welcome to the Treasure Hub!\n");
 
-        printf("Monitor is already running (PID %d)\n", monitor_pid);
-        return;
-    }
+    while (1) {
+        printf("\nAvailable commands:\n");
+        printf("  start_monitor\n");
+        printf("  list_hunts\n");
+        printf("  list_treasures <directory>\n");
+        printf("  view_treasure <directory>\n");
+        printf("  stop_monitor\n");
+        printf("  exit\n");
 
-    monitor_pid = fork();//create child process
+        printf("\n> ");
+        fflush(stdout);
 
-    if(monitor_pid < 0){
+        if (!fgets(input, sizeof(input), stdin)) {
+            printf("Input error. Exiting.\n");
+            break;
+        }
 
-        perror("fork");
-        exit(EXIT_FAILURE);
-    }
+        // Remove newline
+        input[strcspn(input, "\n")] = '\0';
 
-    if(monitor_pid == 0){//child monitor process
-
-        struct sigaction sa_usr1;
-        sa_usr1.sa_handler = handle_usr1;
-        sigemptyset(&sa_usr1.sa_mask);
-        sa_usr1.sa_flags = 0;
-        sigaction(SIGUSR1, &sa_usr1, NULL);
-
-        struct sigaction sa_term;
-        sa_term.sa_handler = handle_term;
-        sigemptyset(&sa_term.sa_mask);
-        sa_term.sa_flags = 0;
-        sigaction(SIGTERM, &sa_term, NULL);
-
-        printf("[Monitor] Running (PID %d) Waiting for signals...\n", getpid());
-
-        while(1){
-
-            pause();
+        if (strcmp(input, "start_monitor") == 0) {
+            start_monitor();
+        } else if (strcmp(input, "stop_monitor") == 0) {
+            stop_monitor();
+        } else if (strcmp(input, "exit") == 0) {
+            cleanup_and_exit();
+        } else if (strncmp(input, "list_hunts", 10) == 0 ||
+                   strncmp(input, "list_treasures", 14) == 0 ||
+                   strncmp(input, "view_treasure", 13) == 0) {
+            if (monitor_pid <= 0) {
+                printf("Error: Monitor is not running. Use start_monitor first.\n");
+                continue;
+            }
+            write_command(input);
+            send_sigusr1();
+        } else {
+            printf("Invalid command.\n");
         }
     }
 
-    monitor_running = 1; //parent
-    printf("Monitor started with PID %d\n", monitor_pid);
-}
-
-void stop_monitor(){//sends SIGTERM to the monitor to stop it
-
-    if(!monitor_running){
-
-        printf("No monitor running\n");
-        return;
-    }
-
-    kill(monitor_pid, SIGTERM);//tell the monitor to shut down
-    printf("Stop signal sent to monitor (PID %d)\n", monitor_pid);
-}
-
-int main(){
-
-    struct sigaction sa_chld;
-
-    sa_chld.sa_handler = handle_sigchld;
-    sigemptyset(&sa_chld.sa_mask);
-    sa_chld.sa_flags = SA_RESTART;
-    sigaction(SIGCHLD, &sa_chld, NULL);
-
-    //testing
-    start_monitor();
-
-    sleep(1);
-    kill(monitor_pid, SIGUSR1);
-
-    sleep(1);
-    stop_monitor();
-
-    sleep(1);
-
+    cleanup_and_exit();
     return 0;
 }

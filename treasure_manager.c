@@ -8,21 +8,22 @@
 #include <fcntl.h>
 #include <unistd.h>   // close, read, write, rmdir, unlink, symlink
 #include <time.h>
+#include "treasure_manager.h"
 
-#define MAX_LENGTH_NAME 1000
+#define MAX_LENGTH_NAME 2048
 
-typedef struct {
-    long double latitude;
-    long double longitude;
-} GPS;
+// typedef struct {
+//     long double latitude;
+//     long double longitude;
+// } GPS;
 
-typedef struct {
-    int treasureID;
-    char user_name[MAX_LENGTH_NAME];
-    char clue[100];
-    GPS gps;
-    int value;
-} Treasure;
+// typedef struct {
+//     int treasureID;
+//     char user_name[MAX_LENGTH_NAME];
+//     char clue[100];
+//     GPS gps;
+//     int value;
+// } Treasure;
 
 Treasure *addHunt_ID(int treasureID) {
     Treasure *temp = (Treasure *)malloc(sizeof(Treasure));
@@ -58,7 +59,10 @@ void log_op(const char *dir_name, const char *op) {
     strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", timeInfo);
 
     char entry[MAX_LENGTH_NAME];
-    snprintf(entry, sizeof(entry), "[%s] %s\n", time_str, op);
+    // Check the total length before formatting
+    if (snprintf(entry, sizeof(entry), "[%s] %s\n", time_str, op) >= sizeof(entry)) {
+        fprintf(stderr, "Warning: log entry truncated in log_op function.\n");
+    }
 
     char path[MAX_LENGTH_NAME];
     snprintf(path, sizeof(path), "%s/logged_hunt.txt", dir_name);
@@ -77,6 +81,7 @@ void log_op(const char *dir_name, const char *op) {
 
     close(fd);
 }
+
 
 void listFilesInDirectory() {
     DIR *dir;
@@ -151,9 +156,24 @@ void addTreasureToFile(const char *dir_name, Treasure *t) {
     printf("Treasure added to file: %s\n", path);
     close(fd);
 
+    // Safely format the log message
     char message[MAX_LENGTH_NAME];
-    snprintf(message, sizeof(message), "ADD treasure%d by user=%s at %.4Lf, %.4Lf, value=%d",
-             t->treasureID, t->user_name, t->gps.latitude, t->gps.longitude, t->value);
+    char user_name[MAX_LENGTH_NAME];
+    char clue[100];
+
+    // Ensure 'user_name' and 'clue' do not exceed MAX_LENGTH_NAME
+    strncpy(user_name, t->user_name, sizeof(user_name) - 1);
+    user_name[sizeof(user_name) - 1] = '\0'; // Null terminate if it gets truncated
+
+    strncpy(clue, t->clue, sizeof(clue) - 1);
+    clue[sizeof(clue) - 1] = '\0'; // Null terminate if it gets truncated
+
+    int ret = snprintf(message, sizeof(message), "ADD treasure%d by user=%s at %.4Lf, %.4Lf, value=%d",
+             t->treasureID, user_name, t->gps.latitude, t->gps.longitude, t->value);
+    if (ret >= sizeof(message)) {
+        fprintf(stderr, "Warning: log message truncated in addTreasureToFile function.\n");
+    }
+
     log_op(dir_name, message);
 }
 
@@ -260,63 +280,63 @@ void remove_treasure(const char *dir_name) {
     log_op(dir_name, log_message);
 }
 
-int main(int argc, char **argv) {
-    if (argc < 2) {
-        printf("Error: Not enough arguments\n");
-        return 1;
-    }
-
-    if (strcmp(argv[1], "--add") == 0) {
-        if (argc < 3) {
-            printf("Error: Provide a directory name for --add\n");
-            return 1;
-        }
-
-        const char *dir_name = argv[2];
-        createDirectory(dir_name);
-
-        Treasure *treasure = addHunt_ID(1);
-        strcpy(treasure->user_name, "Sara");
-        treasure->gps.latitude = 45.1234;
-        treasure->gps.longitude = 25.3333;
-        strcpy(treasure->clue, "Behind the waterfall");
-        treasure->value = 100;
-
-        addTreasureToFile(dir_name, treasure);
-        free(treasure);
-
-        create_symlink(dir_name);
-
-    } else if (strcmp(argv[1], "--remove_hunt") == 0) {
-        if (argc < 3) {
-            printf("Error: Provide a directory name for --remove_hunt\n");
-            return 1;
-        }
-
-        remove_hunt(argv[2]);
-
-    } else if (strcmp(argv[1], "--remove_treasure") == 0) {
-        if (argc < 3) {
-            printf("Error: Provide a directory name for --remove_treasure\n");
-            return 1;
-        }
-
-        remove_treasure(argv[2]);
-
-    } else if (strcmp(argv[1], "--list") == 0) {
-        listFilesInDirectory();
-
-    } else if (strcmp(argv[1], "--view") == 0) {
-        if (argc < 3) {
-            printf("Error: Provide a directory name for --view\n");
-            return 1;
-        }
-
-        viewTreasureInFile(argv[2]);
-
-    } else {
-        printf("Unknown command. Use: --add, --remove_hunt, --remove_treasure, --list, --view\n");
-    }
-
-    return 0;
-}
+// int main(int argc, char **argv) {
+//     if (argc < 2) {
+//         printf("Error: Not enough arguments\n");
+//         return 1;
+//     }
+//
+//     if (strcmp(argv[1], "--add") == 0) {
+//         if (argc < 3) {
+//             printf("Error: Provide a directory name for --add\n");
+//             return 1;
+//         }
+//
+//         const char *dir_name = argv[2];
+//         createDirectory(dir_name);
+//
+//         Treasure *treasure = addHunt_ID(1);
+//         strcpy(treasure->user_name, "Sara");
+//         treasure->gps.latitude = 45.1234;
+//         treasure->gps.longitude = 25.3333;
+//         strcpy(treasure->clue, "Behind the waterfall");
+//         treasure->value = 100;
+//
+//         addTreasureToFile(dir_name, treasure);
+//         free(treasure);
+//
+//         create_symlink(dir_name);
+//
+//     } else if (strcmp(argv[1], "--remove_hunt") == 0) {
+//         if (argc < 3) {
+//             printf("Error: Provide a directory name for --remove_hunt\n");
+//             return 1;
+//         }
+//
+//         remove_hunt(argv[2]);
+//
+//     } else if (strcmp(argv[1], "--remove_treasure") == 0) {
+//         if (argc < 3) {
+//             printf("Error: Provide a directory name for --remove_treasure\n");
+//             return 1;
+//         }
+//
+//         remove_treasure(argv[2]);
+//
+//     } else if (strcmp(argv[1], "--list") == 0) {
+//         listFilesInDirectory();
+//
+//     } else if (strcmp(argv[1], "--view") == 0) {
+//         if (argc < 3) {
+//             printf("Error: Provide a directory name for --view\n");
+//             return 1;
+//         }
+//
+//         viewTreasureInFile(argv[2]);
+//
+//     } else {
+//         printf("Unknown command. Use: --add, --remove_hunt, --remove_treasure, --list, --view\n");
+//     }
+//
+//     return 0;
+// }

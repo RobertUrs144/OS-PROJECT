@@ -1,0 +1,12 @@
+[2025-05-05 21:50:36] ADD treasure1 by user=Sara at 45.1234, 25.3333, value=100
+[2025-05-05 21:50:48] VIEW treasure1
+[2025-05-07 14:22:26] Received command: list_treasures Hunt5
+[2025-05-07 14:22:26] VIEW treasure1
+[2025-05-07 14:22:36] Received command: view_treasure Hunt5
+[2025-05-07 14:22:36] VIEW treasure1
+[2025-05-07 14:40:49] Received command: list_treasures Hunt5
+[2025-05-07 14:40:49] VIEW treasure1
+[2025-05-07 14:42:44] Received command: view_treasure Hunt5
+[2025-05-07 14:42:44] VIEW treasure1
+[2025-05-07 22:24:52] Received command: list_treasures Hunt5
+[2025-05-07 22:24:52] VIEW treasure1
