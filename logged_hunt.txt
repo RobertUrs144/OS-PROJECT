@@ -16,3 +16,7 @@
 [2025-05-07 22:24:43] Received command: list_hunts
 [2025-05-07 22:25:01] SIGTERM received. Monitor shutting down in 2 seconds...
 [2025-05-07 22:25:03] Monitor terminated.
+[2025-05-13 16:47:57] Monitor process started
+[2025-05-13 16:48:04] Received command: list_hunts
+[2025-05-13 16:48:24] Monitor process started
+[2025-05-13 16:48:28] Received command: list_hunts
