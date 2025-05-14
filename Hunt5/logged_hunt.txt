@@ -10,3 +10,6 @@
 [2025-05-07 14:42:44] VIEW treasure1
 [2025-05-07 22:24:52] Received command: list_treasures Hunt5
 [2025-05-07 22:24:52] VIEW treasure1
+[2025-05-14 14:55:43] Received command: list_treasures Hunt5
+[2025-05-14 14:55:43] VIEW treasure1
+[2025-05-14 15:29:37] Spawned calculate_score for hunt 'Hunt5' (PID 1067)

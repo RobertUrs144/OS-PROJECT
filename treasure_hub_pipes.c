@@ -1,150 +1,164 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <signal.h>
+#include <string.h>
+#include <fcntl.h>
 #include <errno.h>
+#include <time.h>
+#include "treasure_manager.h"
 
 #define CMD_FILE "monitor_cmd.txt"
-#define MAX_INPUT 1024
+#define MAX_LINE 2048
 
-pid_t monitor_pid = -1;
-int monitor_pipe[2];
-
-void write_command(const char *command) {
-    FILE *fp = fopen(CMD_FILE, "w");
-    if (!fp) {
-        perror("Failed to write command");
-        return;
-    }
-    fprintf(fp, "%s\n", command);
-    fclose(fp);
+void handle_sigusr1(int signo) {
+    // This is just a placeholder for signal handling; actual processing is done in the main loop.
 }
 
-void send_sigusr1() {
-    if (monitor_pid > 0) {
-        kill(monitor_pid, SIGUSR1);
-    } else {
-        printf("Monitor not running.\n");
-    }
+void handle_sigterm(int signo) {
+    // This is just a placeholder for signal handling; actual processing is done in the main loop.
 }
 
-void start_monitor() {
-    if (monitor_pid > 0) {
-        printf("Monitor already running with PID %d\n", monitor_pid);
+void handle_sigchld(int signo) {
+    // Optional: handle cleanup or log child termination
+    log_op(".", "Received SIGCHLD (child terminated)");
+}
+
+void process_command() {
+    FILE *cmd_fp = fopen(CMD_FILE, "r");
+    if (!cmd_fp) {
+        perror("Failed to open monitor_cmd.txt");
         return;
     }
 
-    if (pipe(monitor_pipe) == -1) {
-        perror("Failed to create pipe");
+    char line[MAX_LINE];
+    if (!fgets(line, sizeof(line), cmd_fp)) {
+        fclose(cmd_fp);
         return;
     }
 
-    pid_t pid = fork();
-    if (pid < 0) {
-        perror("Failed to fork monitor");
-        return;
-    }
+    // Remove trailing newline
+    line[strcspn(line, "\n")] = '\0';
+    fclose(cmd_fp);
 
-    if (pid == 0) {
-        // Child process runs the monitor
-        close(monitor_pipe[0]); // Close read end
-        dup2(monitor_pipe[1], STDOUT_FILENO); // Redirect stdout to pipe
-        close(monitor_pipe[1]);
+    // Parse command
+    char *token = strtok(line, " ");
+    if (!token) return;
 
-        execl("./monitor", "monitor", NULL);
-        perror("Failed to exec monitor");
-        exit(1);
-    } else {
-        close(monitor_pipe[1]); // Close write end in parent
-        monitor_pid = pid;
-        printf("Monitor started with PID %d\n", monitor_pid);
-        sleep(1); // Give it time to initialize
-    }
-}
+    if (strcmp(token, "list_hunts") == 0) {
+        log_op(".", "Received command: list_hunts");
+        listFilesInDirectory();
 
-void stop_monitor() {
-    if (monitor_pid <= 0) {
-        printf("Monitor is not running.\n");
-        return;
-    }
+    } else if (strcmp(token, "list_treasures") == 0) {
+        char *dir = strtok(NULL, " ");
+        if (!dir) {
+            printf("Error: list_treasures requires directory\n");
+            return;
+        }
+        char msg[MAX_LINE];
+        snprintf(msg, sizeof(msg), "Received command: list_treasures %s", dir);
+        log_op(dir, msg);
+        viewTreasureInFile(dir);
 
-    kill(monitor_pid, SIGTERM);
-    waitpid(monitor_pid, NULL, 0); // Wait for monitor to finish
-    printf("Monitor with PID %d stopped.\n", monitor_pid);
-    monitor_pid = -1;
-    close(monitor_pipe[0]); // Clean up pipe read end
-}
+    } else if (strcmp(token, "view_treasure") == 0) {
+        char *dir = strtok(NULL, " ");
+        if (!dir) {
+            printf("Error: view_treasure requires directory\n");
+            return;
+        }
+        char msg[MAX_LINE];
+        snprintf(msg, sizeof(msg), "Received command: view_treasure %s", dir);
+        log_op(dir, msg);
+        viewTreasureInFile(dir);
 
-void cleanup_and_exit() {
-    if (monitor_pid > 0) {
-        kill(monitor_pid, SIGTERM);
-        waitpid(monitor_pid, NULL, 0);
-        printf("Monitor terminated on exit.\n");
-    }
-    printf("Exiting treasure_hub.\n");
-    exit(0);
-}
+    }else if(strcmp(token, "calculate_score") == 0){
 
-void read_monitor_output() {
-    char buffer[2048];
-    ssize_t n = read(monitor_pipe[0], buffer, sizeof(buffer) - 1);
-    if (n > 0) {
-        buffer[n] = '\0';
-        printf("[Monitor Output]:\n%s\n", buffer);
-    } else {
-        printf("No output from monitor or read failed.\n");
+        char *dir = strtok(NULL, " ");
+        if (!dir) {
+            printf("Error: calculate_score requires directory\n");
+            return;
+        }
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            return;
+        } else if (pid == 0) {
+            // Child process: replace with calculate_score executable
+            execl("./calculate_score", "calculate_score", dir, NULL);
+            // If execl fails:
+            perror("execl");
+            exit(1);
+        } else {
+            // Parent process: optionally log
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Spawned calculate_score for hunt '%s' (PID %d)", dir, pid);
+            log_op(dir, msg);
+        }
     }
 }
 
 int main() {
-    char input[MAX_INPUT];
+    struct sigaction sa_usr1, sa_term, sa_chld;
+    sigset_t sigset;
 
-    printf("Welcome to the Treasure Hub!\n");
+    // Initialize the signal set
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGUSR1);
+    sigaddset(&sigset, SIGTERM);
+    sigaddset(&sigset, SIGCHLD);
+
+    // Set up signal handlers (they won't directly change flags now)
+    sa_usr1.sa_handler = handle_sigusr1;
+    sigemptyset(&sa_usr1.sa_mask);
+    sa_usr1.sa_flags = 0;
+
+    sa_term.sa_handler = handle_sigterm;
+    sigemptyset(&sa_term.sa_mask);
+    sa_term.sa_flags = 0;
+
+    sa_chld.sa_handler = handle_sigchld;
+    sigemptyset(&sa_chld.sa_mask);
+    sa_chld.sa_flags = 0;
+
+    if (sigaction(SIGUSR1, &sa_usr1, NULL) == -1) {
+        perror("sigaction SIGUSR1");
+        exit(1);
+    }
+
+    if (sigaction(SIGTERM, &sa_term, NULL) == -1) {
+        perror("sigaction SIGTERM");
+        exit(1);
+    }
+
+    if (sigaction(SIGCHLD, &sa_chld, NULL) == -1) {
+        perror("sigaction SIGCHLD");
+        exit(1);
+    }
+
+    log_op(".", "Monitor process started");
 
     while (1) {
-        printf("\nAvailable commands:\n");
-        printf("  start_monitor\n");
-        printf("  list_hunts\n");
-        printf("  list_treasures <directory>\n");
-        printf("  view_treasure <directory>\n");
-        printf("  stop_monitor\n");
-        printf("  exit\n");
+        int sig;
+        // Wait for any signal from the set
+        sigwait(&sigset, &sig);
 
-        printf("\n> ");
-        fflush(stdout);
+        if (sig == SIGUSR1) {
+            process_command();
+        }
 
-        if (!fgets(input, sizeof(input), stdin)) {
-            printf("Input error. Exiting.\n");
+        if (sig == SIGTERM) {
+            log_op(".", "SIGTERM received. Monitor shutting down in 2 seconds...");
+            sleep(2);
+            log_op(".", "Monitor terminated.");
             break;
         }
 
-        // Remove newline
-        input[strcspn(input, "\n")] = '\0';
-
-        if (strcmp(input, "start_monitor") == 0) {
-            start_monitor();
-        } else if (strcmp(input, "stop_monitor") == 0) {
-            stop_monitor();
-        } else if (strcmp(input, "exit") == 0) {
-            cleanup_and_exit();
-        } else if (strncmp(input, "list_hunts", 10) == 0 ||
-                   strncmp(input, "list_treasures", 14) == 0 ||
-                   strncmp(input, "view_treasure", 13) == 0) {
-            if (monitor_pid <= 0) {
-                printf("Error: Monitor is not running. Use start_monitor first.\n");
-                continue;
-            }
-            write_command(input);
-            send_sigusr1();
-            read_monitor_output();
-        } else {
-            printf("Invalid command.\n");
+        if (sig == SIGCHLD) {
+            handle_sigchld(sig);  // Optionally handle child cleanup
         }
     }
 
-    cleanup_and_exit();
     return 0;
 }
+

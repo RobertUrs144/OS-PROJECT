@@ -24,6 +24,7 @@ void handle_sigchld(int signo) {
     log_op(".", "Received SIGCHLD (child terminated)");
 }
 
+
 void process_command() {
     FILE *cmd_fp = fopen(CMD_FILE, "r");
     if (!cmd_fp) {
@@ -71,10 +72,33 @@ void process_command() {
         log_op(dir, msg);
         viewTreasureInFile(dir);
 
-    } else {
-        printf("Unknown command in monitor_cmd.txt: %s\n", token);
+    } else if (strcmp(token, "calculate_score") == 0) {
+        char *dir = strtok(NULL, " ");
+        if (!dir) {
+            printf("Error: calculate_score requires directory\n");
+            return;
+        }
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            return;
+        } else if (pid == 0) {
+            // Child process: replace with calculate_score executable
+            execl("./calculate_score", "calculate_score", dir, NULL);
+            // If execl fails:
+            perror("execl");
+            exit(1);
+        } else {
+            // Parent process: optionally log
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Spawned calculate_score for hunt '%s' (PID %d)", dir, pid);
+            log_op(dir, msg);
+        }
+
     }
 }
+
 
 int main() {
     struct sigaction sa_usr1, sa_term, sa_chld;
@@ -139,4 +163,3 @@ int main() {
 
     return 0;
 }
-

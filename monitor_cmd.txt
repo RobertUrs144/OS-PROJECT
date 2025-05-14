@@ -1,1 +1,1 @@
-list_hunts
+calculate_score Hunt5

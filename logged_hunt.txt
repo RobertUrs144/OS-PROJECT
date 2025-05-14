@@ -20,3 +20,12 @@
 [2025-05-13 16:48:04] Received command: list_hunts
 [2025-05-13 16:48:24] Monitor process started
 [2025-05-13 16:48:28] Received command: list_hunts
+[2025-05-14 14:55:23] Monitor process started
+[2025-05-14 14:55:30] Received command: list_hunts
+[2025-05-14 14:56:03] SIGTERM received. Monitor shutting down in 2 seconds...
+[2025-05-14 14:56:05] Monitor terminated.
+[2025-05-14 15:18:55] Monitor process started
+[2025-05-14 15:23:42] Monitor process started
+[2025-05-14 15:25:57] Monitor process started
+[2025-05-14 15:29:30] Monitor process started
+[2025-05-14 15:29:37] Received SIGCHLD (child terminated)

@@ -87,6 +87,7 @@ int main() {
         printf("  list_hunts\n");
         printf("  list_treasures <directory>\n");
         printf("  view_treasure <directory>\n");
+        printf("  calculate_score <directory>\n");
         printf("  stop_monitor\n");
         printf("  exit\n");
 
@@ -116,7 +117,17 @@ int main() {
             }
             write_command(input);
             send_sigusr1();
-        } else {
+        }else if(strncmp(input, "calculate_score", 15) == 0){
+            if(monitor_pid <= 0){
+
+                printf("Error: Monitor is not running. Start the monitor first\n");
+                continue;
+            }
+
+            write_command(input);
+            send_sigusr1();
+
+        }else {
             printf("Invalid command.\n");
         }
     }
