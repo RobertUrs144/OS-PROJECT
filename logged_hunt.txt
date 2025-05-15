@@ -29,3 +29,14 @@
 [2025-05-14 15:25:57] Monitor process started
 [2025-05-14 15:29:30] Monitor process started
 [2025-05-14 15:29:37] Received SIGCHLD (child terminated)
+[2025-05-14 15:37:52] SIGTERM received. Monitor shutting down in 2 seconds...
+[2025-05-14 15:37:54] Monitor terminated.
+[2025-05-14 15:46:18] Monitor process started
+[2025-05-14 15:46:27] Received SIGCHLD (child terminated)
+[2025-05-14 15:47:02] SIGTERM received. Monitor shutting down in 2 seconds...
+[2025-05-14 15:47:04] Monitor terminated.
+[2025-05-14 15:47:10] Monitor process started
+[2025-05-15 21:11:14] Monitor process started
+[2025-05-15 21:11:22] Received SIGCHLD (child terminated)
+[2025-05-15 21:11:30] SIGTERM received. Monitor shutting down in 2 seconds...
+[2025-05-15 21:11:32] Monitor terminated.

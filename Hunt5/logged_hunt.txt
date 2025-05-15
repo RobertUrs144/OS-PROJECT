@@ -13,3 +13,9 @@
 [2025-05-14 14:55:43] Received command: list_treasures Hunt5
 [2025-05-14 14:55:43] VIEW treasure1
 [2025-05-14 15:29:37] Spawned calculate_score for hunt 'Hunt5' (PID 1067)
+[2025-05-14 15:46:27] Finished calculating score for 'Hunt5'
+[2025-05-14 15:46:52] Received command: list_treasures Hunt5
+[2025-05-14 15:46:52] VIEW treasure1
+[2025-05-15 21:08:25] ADD treasure2 by user=John at 12.1479, 75.7471, value=461
+[2025-05-15 21:08:45] VIEW treasure2
+[2025-05-15 21:11:22] Finished calculating score for 'Hunt5'

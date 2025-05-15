@@ -285,58 +285,58 @@ void remove_treasure(const char *dir_name) {
 //         printf("Error: Not enough arguments\n");
 //         return 1;
 //     }
-//
+
 //     if (strcmp(argv[1], "--add") == 0) {
 //         if (argc < 3) {
 //             printf("Error: Provide a directory name for --add\n");
 //             return 1;
 //         }
-//
+
 //         const char *dir_name = argv[2];
 //         createDirectory(dir_name);
-//
-//         Treasure *treasure = addHunt_ID(1);
-//         strcpy(treasure->user_name, "Sara");
-//         treasure->gps.latitude = 45.1234;
-//         treasure->gps.longitude = 25.3333;
-//         strcpy(treasure->clue, "Behind the waterfall");
-//         treasure->value = 100;
-//
+
+//         Treasure *treasure = addHunt_ID(2);
+//         strcpy(treasure->user_name, "John");
+//         treasure->gps.latitude = 12.1479;
+//         treasure->gps.longitude = 75.7471;
+//         strcpy(treasure->clue, "Under the tree");
+//         treasure->value = 461;
+
 //         addTreasureToFile(dir_name, treasure);
 //         free(treasure);
-//
+
 //         create_symlink(dir_name);
-//
+
 //     } else if (strcmp(argv[1], "--remove_hunt") == 0) {
 //         if (argc < 3) {
 //             printf("Error: Provide a directory name for --remove_hunt\n");
 //             return 1;
 //         }
-//
+
 //         remove_hunt(argv[2]);
-//
+
 //     } else if (strcmp(argv[1], "--remove_treasure") == 0) {
 //         if (argc < 3) {
 //             printf("Error: Provide a directory name for --remove_treasure\n");
 //             return 1;
 //         }
-//
+
 //         remove_treasure(argv[2]);
-//
+
 //     } else if (strcmp(argv[1], "--list") == 0) {
 //         listFilesInDirectory();
-//
+
 //     } else if (strcmp(argv[1], "--view") == 0) {
 //         if (argc < 3) {
 //             printf("Error: Provide a directory name for --view\n");
 //             return 1;
 //         }
-//
+
 //         viewTreasureInFile(argv[2]);
-//
+
 //     } else {
 //         printf("Unknown command. Use: --add, --remove_hunt, --remove_treasure, --list, --view\n");
 //     }
-//
+
 //     return 0;
 // }
